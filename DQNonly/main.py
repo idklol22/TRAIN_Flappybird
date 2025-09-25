@@ -4,28 +4,59 @@ import torch
 from dqn import DQN
 from experience_replay import Replaymemo
 import itertools
-reward_ep =[]
+import yaml
+import random
 class Agent:
-    def run(self,Is_training = True,render = False):
+    def __init__(self,hyperparameters_set):
+        with open("hyperparameters.yml","rb") as f :
+            hyperparameters = yaml.safe_load(f)
+        parameters = hyperparameters[hyperparameters_set]
+        self.replaysize = parameters["replaysize"]
+        self.minibatch = parameters["minibatch"]
+        self.epsilon = parameters["epsilon"]
+        self.decay = parameters["decay"]
+        self.min_epsilon  = parameters["min_epsilon"]
+    def run(self,Is_training = True,render = False):        
         env = gymnasium.make("FlappyBird-v0", render_mode="human" if render else None, use_lidar=False)
+        reward_ep =[]
+        epsilon_history = []
+
         if (Is_training):
-            buffer = Replaymemo(maxlen = 10000)
+            k = self.replaysize
+            d = self.minibatch
+            buffer = Replaymemo(maxlen = k,sample_size= d)
+        policy = DQN(env.observation_space.shape[0],env.action_space.n).to("cuda")
+
         for i in itertools.count():
             state,_ = env.reset()
             reward1 = 0
             terminated = False
-            policy = DQN(env.observation_space.shape[0],env.action_space.n).to("cuda")
+            state = torch.tensor(state,dtype = torch.float,device= "cuda")
+
 
             while not terminated:
-                    action = env.action_space.sample()
-                    newstate, reward, terminated, _, info = env.step(action)
+                    if Is_training and random.random()<self.epsilon:
+                        action = env.action_space.sample()
+                        action1 = torch.tensor(action,dtype = torch.float,device= "cuda").squeeze().item()
+
+                    else:
+                        action1 = policy(state.unsqueeze(0)).squeeze().argmax().item()
+                        print(action1)
+                    newstate, reward, terminated, _, info = env.step(action1)
                     reward1 = reward +reward1 
+                    newstate = torch.tensor(newstate,dtype = torch.float,device= "cuda")
+                    reward =  torch.tensor(reward,dtype = torch.float,device= "cuda")
                     if Is_training :
-                        buffer.append((state,action,newstate,reward,terminated))
+                        buffer.append((state,action1,newstate,reward,terminated))
                     if terminated:
                         break
                         env.close()
+                    state  = newstate
+            self.epsilon -= self.decay
+            self.epsilon = max(0.1 , self.epsilon)
             print(reward1)
             reward_ep.append(reward1)
-x = Agent()
+            epsilon_history.append(self.epsilon)
+            print(self.epsilon)
+x = Agent("cartpole1")
 x.run(render = True)

@@ -1,0 +1,7 @@
+cartpole1:
+ env_name: CartPole-v1
+ replaysize: 10000
+ minibatch: 34
+ epsilon: 1
+ decay: 0.0005
+ min_epsilon: 0.05
