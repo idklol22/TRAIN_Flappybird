@@ -17,7 +17,8 @@ class Agent:
         self.decay = parameters["decay"]
         self.min_epsilon  = parameters["min_epsilon"]
     def run(self,Is_training = True,render = False):        
-        env = gymnasium.make("FlappyBird-v0", render_mode="human" if render else None, use_lidar=False)
+    #    env = gymnasium.make("FlappyBird-v0", render_mode="human" if render else None, use_lidar=False)
+        env = gymnasium.make("CartPole-v1",render_mode = "human"if render else None)
         reward_ep =[]
         epsilon_history = []
 
@@ -31,18 +32,19 @@ class Agent:
             state,_ = env.reset()
             reward1 = 0
             terminated = False
+            truncated = False
             state = torch.tensor(state,dtype = torch.float,device= "cuda")
 
 
-            while not terminated:
+            while not terminated or truncated:
                     if Is_training and random.random()<self.epsilon:
                         action = env.action_space.sample()
-                        action1 = torch.tensor(action,dtype = torch.float,device= "cuda").squeeze().item()
+                        action1 = torch.tensor(action,dtype = torch.int,device= "cuda").squeeze().item()
 
                     else:
                         action1 = policy(state.unsqueeze(0)).squeeze().argmax().item()
                         print(action1)
-                    newstate, reward, terminated, _, info = env.step(action1)
+                    newstate, reward, terminated, truncated, info = env.step(action1)
                     reward1 = reward +reward1 
                     newstate = torch.tensor(newstate,dtype = torch.float,device= "cuda")
                     reward =  torch.tensor(reward,dtype = torch.float,device= "cuda")
@@ -53,10 +55,10 @@ class Agent:
                         env.close()
                     state  = newstate
             self.epsilon -= self.decay
-            self.epsilon = max(0.1 , self.epsilon)
+            self.epsilon = max(0.01 , self.epsilon)
             print(reward1)
             reward_ep.append(reward1)
             epsilon_history.append(self.epsilon)
             print(self.epsilon)
 x = Agent("cartpole1")
-x.run(render = True)
+x.run(render = False)
