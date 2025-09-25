@@ -1,7 +1,7 @@
 from collections import deque
 import random 
-class Replaymemo():
-    def __ini__(self , maxlen,seed = None):
+class Replaymemo:
+    def __init__(self , maxlen,seed = None):
         self.memory = deque([],maxlen = maxlen)
         if seed is not None:
             random.seed(seed)
